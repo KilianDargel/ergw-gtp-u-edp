@@ -1,20 +1,54 @@
-sudo: false
+language: generic
+sudo: required
 
-language: erlang
+services: 
+  - docker
 
-otp_release:
- - 19.1
- - 19.2
- - 19.3
- - 20.0
+deploy:
+  provider: packagecloud
+  repository: "ergw"
+  username: "travelping"
+  token:
+    secure: "J/P"
 
-install: "true"
+  dist: "ubuntu/xenial"
+  skip_cleanup: true
+  package_glob: artifacts/*.deb
+  on:
+    branch: master
+
+env:
+  global:
+    - BUILD_IMAGE="ergw/ergw-gtp-u-edp"
+    - DOCKER_USERNAME="ergwci"
+    - secure: "HW6szVo="
 
 before_install:
-  - wget https://s3.amazonaws.com/rebar3/rebar3
-  - chmod u+x ./rebar3
+  - docker pull ergw/ergw-docker-build
 
 script:
-  - ./rebar3 compile
-  - ./rebar3 xref
-- ./rebar3 do xref, ct, coveralls send
+  - mkdir artifacts
+  - export SHORT_COMMIT_ID=$(git rev-parse --verify --short $TRAVIS_COMMIT)
+  - docker run -v `pwd`:/build ergw/ergw-docker-build
+    sh -x -c "
+      echo \"SHORT_COMMIT_ID=$SHORT_COMMIT_ID\" &&
+      debchange -m -l \"+$TRAVIS_JOB_NUMBER+git$SHORT_COMMIT_ID\" 'Automatically built' &&
+      dpkg-buildpackage -b -uc -nc &&
+      cp ../*deb artifacts
+    "
+  - docker build -t $BUILD_IMAGE -f docker/Dockerfile .
+after_success:
+  - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+  - export TAG=`if [ "$TRAVIS_EVENT_TYPE" == "pull_request" ]; then echo PR-$TRAVIS_PULL_REQUEST_BRANCH ; else echo $TRAVIS_BRANCH ; fi`
+  - if [ "$TAG" == "master" ]; then export TAG="latest"; fi
+  - docker tag $BUILD_IMAGE $BUILD_IMAGE:$TAG
+  - docker push $BUILD_IMAGE:$TAG
+  - echo "docker push done"
+
+notifications:
+  slack:
+  - secure: "tG1auRM3DDECiOyKOMViH8XxvNY9uHg0WvVMJbs="
+
+branches:
+  only:
+   - master
