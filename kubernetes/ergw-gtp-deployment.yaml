@@ -17,11 +17,18 @@ spec:
       containers:
       - name: ergw-u-edp
         image: kiliandargel/ergw-gtp-u-edp
-        envFrom:
-        - configMapRef:
-            name: gtp-u-edp-configmap
+        volumeMounts:
+       - name: gtp-u-edp-configmap
+         mountPath: /config/       
       - name: ergw-c-node
-        image: ergw/ergw-pgw-c-node
-        envFrom:
-        - configMapRef:
-            name: gtp-c-edp-configmap
+        image: ergw/ergw-gtp-c-node
+        volumeMounts:
+       - name: gtp-c-edp-configmap
+         mountPath: /config/
+    volumes:
+      - name: gtp-u-edp-config-volume
+        configMap:
+          name: gtp-u-edp-configmap
+      - name: gtp-c-edp-config-volume
+        configMap:
+          name: gtp-c-edp-configmap
