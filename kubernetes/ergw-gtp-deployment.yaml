@@ -1,0 +1,27 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: ergw-gtp
+  labels:
+    run: ergw-gtp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: ergw-gtp
+  template:
+    metadata:
+        labels:
+          run: ergw-gtp
+    spec:
+      containers:
+      - name: ergw-u-edp
+        image: kiliandargel/ergw-gtp-u-edp
+        envFrom:
+        - configMapRef:
+            name: gtp-u-edp-configmap
+      - name: ergw-c-node
+        image: ergw/ergw-pgw-c-node
+        envFrom:
+        - configMapRef:
+            name: gtp-c-edp-configmap
